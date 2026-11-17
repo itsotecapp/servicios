@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema Integral de Servicios - Edificio</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Alpine.js -->
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style> body { font-family: 'Inter', sans-serif; } </style>
+</head>
+<body class="bg-slate-50 text-slate-800 antialiased" x-data="utilityApp()" x-init="initCharts()">
+
+    <!-- Header Principal (Responsivo) -->
+    <header class="bg-indigo-900 text-white shadow-lg">
+        <div class="max-w-7xl mx-auto px-4 py-4 md:py-6 flex flex-col md:flex-row justify-between items-center gap-4">
+            <div>
+                <h1 class="text-xl md:text-2xl font-bold flex items-center gap-2">
+                    <svg class="w-7 h-7 md:w-8 md:h-8 text-indigo-400 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
+                    Gestión de Servicios
+                </h1>
+                <p class="text-indigo-200 text-xs md:text-sm mt-0.5">Control de consumos, historial de pagos y recibos</p>
+            </div>
+            <!-- Pestañas de Navegación -->
+            <div class="flex w-full md:w-auto bg-indigo-950 p-1.5 rounded-xl border border-indigo-700 overflow-x-auto">
+                <button @click="tab = 'calculo'" :class="tab === 'calculo' ? 'bg-indigo-600 text-white' : 'text-indigo-300 hover:text-white'" class="flex-1 md:flex-initial px-3 md:px-4 py-2 rounded-lg text-xs md:text-sm font-medium transition-all whitespace-nowrap">Cálculo Actual</button>
+                <button @click="tab = 'historial'" :class="tab === 'historial' ? 'bg-indigo-600 text-white' : 'text-indigo-300 hover:text-white'" class="flex-1 md:flex-initial px-3 md:px-4 py-2 rounded-lg text-xs md:text-sm font-medium transition-all whitespace-nowrap">Historial</button>
+                <button @click="tab = 'recibos'" :class="tab === 'recibos' ? 'bg-indigo-600 text-white' : 'text-indigo-300 hover:text-white'" class="flex-1 md:flex-initial px-3 md:px-4 py-2 rounded-lg text-xs md:text-sm font-medium transition-all whitespace-nowrap">Visor Recibos</button>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-4 py-6 md:py-8 space-y-6 md:space-y-8">
+
+        <!-- ================= PESTAÑA 1: CÁLCULO ACTUAL ================= -->
+        <div x-show="tab === 'calculo'" class="space-y-6 md:space-y-8">
+            <!-- Panel Global de Recibos -->
+            <section class="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
+                <!-- Recibo Luz -->
+                <div class="bg-white p-5 md:p-6 rounded-2xl shadow-sm border border-slate-200 space-y-3">
+                    <h2 class="text-md font-bold text-slate-900 flex items-center gap-2">
+                        <span class="p-2 bg-amber-100 text-amber-600 rounded-lg">⚡</span> Recibo Total de Luz
+                    </h2>
+                    <input type="number" step="0.01" x-model.number="totalReciboLuz" @input="updateCharts()" class="w-full px-4 py-2 border border-slate-300 rounded-xl font-semibold text-lg">
+                    <div class="pt-2 border-t border-slate-100 flex justify-between items-center text-xs">
+                        <span class="text-slate-600">Tarifa Luz / kWh:</span>
+                        <span class="font-bold text-amber-600" x-text="'S/. ' + tarifaLuzFinal.toFixed(4)"></span>
+                    </div>
+                </div>
+
+                <!-- Recibo Agua -->
+                <div class="bg-white p-5 md:p-6 rounded-2xl shadow-sm border border-slate-200 space-y-3">
+                    <h2 class="text-md font-bold text-slate-900 flex items-center gap-2">
+                        <span class="p-2 bg-sky-100 text-sky-600 rounded-lg">💧</span> Recibo Total de Agua
+                    </h2>
+                    <input type="number" step="0.01" x-model.number="totalReciboAgua" @input="updateCharts()" class="w-full px-4 py-2 border border-slate-300 rounded-xl font-semibold text-lg">
+                    <div class="pt-2 border-t border-slate-100 flex justify-between items-center text-xs">
+                        <span class="text-slate-600">Tarifa Agua / Persona:</span>
+                        <span class="font-bold text-sky-600" x-text="'S/. ' + tarifaAgua.toFixed(4)"></span>
+                    </div>
+                </div>
+
+                <!-- Control de Periodo -->
+                <div class="bg-white p-5 md:p-6 rounded-2xl shadow-sm border border-slate-200 flex flex-col justify-between">
+                    <div>
+                        <h2 class="text-md font-bold text-slate-900 mb-1">📅 Periodo Actual</h2>
+                        <input type="text" x-model="periodo" class="w-full px-4 py-2 border border-slate-300 rounded-xl text-sm">
+                    </div>
+                    <button @click="guardarEnHistorial()" class="mt-4 w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2.5 px-4 rounded-xl text-sm transition-colors shadow-sm">
+                        💾 Guardar Mes en Historial
+                    </button>
+                </div>
+            </section>
+
+            <!-- Registro por Piso -->
+            <section class="bg-white p-5 md:p-6 rounded-2xl shadow-sm border border-slate-200">
+                <h2 class="text-lg font-bold text-slate-900 mb-4">🏢 Registro por Piso</h2>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse min-w-[600px]">
+                        <thead>
+                            <tr class="bg-slate-100 text-slate-700 text-xs uppercase tracking-wider">
+                                <th class="p-3 rounded-l-xl">Piso</th>
+                                <th class="p-3">Lect. Anterior (Luz)</th>
+                                <th class="p-3">Lect. Actual (Luz)</th>
+                                <th class="p-3">Consumo (kWh)</th>
+                                <th class="p-3 rounded-r-xl">N° Personas</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100 text-sm">
+                            <template x-for="(piso, index) in pisos" :key="index">
+                                <tr>
+                                    <td class="p-3 font-semibold text-slate-900" x-text="piso.nombre"></td>
+                                    <td class="p-3"><input type="number" x-model.number="piso.luzAnterior" @input="updateCharts()" class="w-24 md:w-28 px-3 py-1.5 border border-slate-300 rounded-lg"></td>
+                                    <td class="p-3"><input type="number" x-model.number="piso.luzActual" @input="updateCharts()" class="w-24 md:w-28 px-3 py-1.5 border border-slate-300 rounded-lg"></td>
+                                    <td class="p-3 font-medium text-indigo-600" x-text="consumoLuz(piso)"></td>
+                                    <td class="p-3"><input type="number" x-model.number="piso.personas" @input="updateCharts()" class="w-20 md:w-24 px-3 py-1.5 border border-slate-300 rounded-lg"></td>
+                                </tr>
+                            </template>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Reporte Consolidado -->
+            <section class="bg-white p-5 md:p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4">
+                <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-2">
+                    <h2 class="text-lg font-bold text-slate-900">📊 Reporte Consolidado a Pagar</h2>
+                    <span class="text-xs bg-indigo-50 text-indigo-700 font-semibold px-3 py-1 rounded-full border border-indigo-100">Cálculo Automático</span>
+                </div>
+                
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse min-w-[700px]">
+                        <thead>
+                            <tr class="bg-indigo-950 text-white text-xs uppercase tracking-wider">
+                                <th class="p-3 rounded-l-xl">Piso</th>
+                                <th class="p-3">kWh</th>
+                                <th class="p-3">Monto Luz</th>
+                                <th class="p-3">Pers.</th>
+                                <th class="p-3">Monto Agua</th>
+                                <th class="p-3 rounded-r-xl bg-indigo-900 font-bold">Total a Pagar</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100 text-sm">
+                            <template x-for="res in reporteCalculado" :key="res.nombre">
+                                <tr class="hover:bg-slate-50 transition-colors">
+                                    <td class="p-3 font-bold text-slate-900" x-text="res.nombre"></td>
+                                    <td class="p-3 text-slate-700" x-text="res.kwh"></td>
+                                    <td class="p-3 font-semibold text-amber-600" x-text="'S/. ' + res.montoLuz.toFixed(2)"></td>
+                                    <td class="p-3 text-slate-700" x-text="res.personas"></td>
+                                    <td class="p-3 font-semibold text-sky-600" x-text="'S/. ' + res.montoAgua.toFixed(2)"></td>
+                                    <td class="p-3 font-bold text-indigo-950 bg-indigo-50/40" x-text="'S/. ' + res.totalPagar.toFixed(2)"></td>
+                                </tr>
+                            </template>
+                        </tbody>
+                        <tfoot>
+                            <tr class="bg-slate-100 font-bold text-slate-900 border-t-2 border-slate-200">
+                                <td class="p-3">TOTALES</td>
+                                <td class="p-3" x-text="totalKwhGeneral"></td>
+                                <td class="p-3 text-amber-700" x-text="'S/. ' + totalReciboLuz.toFixed(2)"></td>
+                                <td class="p-3" x-text="totalPersonasGeneral"></td>
+                                <td class="p-3 text-sky-700" x-text="'S/. ' + totalReciboAgua.toFixed(2)"></td>
+                                <td class="p-3 text-indigo-900 text-base" x-text="'S/. ' + sumaTotalRecibos.toFixed(2)"></td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+
+                <!-- Notificación de Validación -->
+                <div class="p-3 md:p-4 rounded-xl text-xs md:text-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-2 border"
+                     :class="estaCuadrado ? 'bg-emerald-50 border-emerald-200 text-emerald-800' : 'bg-amber-50 border-amber-200 text-amber-800'">
+                    <div class="flex items-center gap-2">
+                        <span x-text="estaCuadrado ? '✅' : '⚠️'"></span>
+                        <div>
+                            <span class="font-bold" x-text="estaCuadrado ? '¡Cuadre Exacto!' : '¡Atención con el Balance!'"></span>
+                            <p class="text-xs mt-0.5" x-text="mensajeCuadre"></p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Gráficos -->
+            <section class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="bg-white p-5 md:p-6 rounded-2xl shadow-sm border border-slate-200">
+                    <h3 class="text-md font-bold text-slate-800 mb-4 text-center">Distribución de Gastos por Piso</h3>
+                    <div class="relative h-60 md:h-64"><canvas id="chartDistribucionPisos"></canvas></div>
+                </div>
+                <div class="bg-white p-5 md:p-6 rounded-2xl shadow-sm border border-slate-200">
+                    <h3 class="text-md font-bold text-slate-800 mb-4 text-center">Evolución Histórica Global</h3>
+                    <div class="relative h-60 md:h-64"><canvas id="chartHistorico"></canvas></div>
+                </div>
+            </section>
+        </div>
+
+        <!-- ================= PESTAÑA 2: HISTORIAL MENSUAL (Con Pagos y Recibos) ================= -->
+        <div x-show="tab === 'historial'" class="space-y-6" style="display: none;">
+            <div class="bg-white p-5 md:p-6 rounded-2xl shadow-sm border border-slate-200">
+                <h2 class="text-lg font-bold text-slate-900 mb-4">📁 Historial de Periodos Registrados</h2>
+                <template x-if="historial.length === 0">
+                    <p class="text-slate-500 text-sm py-8 text-center">No hay periodos guardados todavía. Haz clic en "Guardar Mes en Historial".</p>
+                </template>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <template x-for="(item, idx) in historial" :key="idx">
+                        <div @click="verDetalleHistorial(item)" class="bg-slate-50 border border-slate-200 p-4 md:p-5 rounded-xl cursor-pointer hover:border-indigo-500 hover:shadow-md transition-all">
+                            <div class="flex justify-between items-center mb-2">
+                                <span class="font-bold text-indigo-900 text-lg" x-text="item.periodo"></span>
+                                <span class="text-xs bg-indigo-100 text-indigo-700 px-2 py-1 rounded-md font-medium">Ver Detalle</span>
+                            </div>
+                            <p class="text-xs text-slate-600">Total Recibos: <span class="font-semibold text-indigo-600" x-text="'S/. ' + (item.totalReciboLuz + item.totalReciboAgua).toFixed(2)"></span></p>
+                        </div>
+                    </template>
+                </div>
+            </div>
+
+            <!-- Detalle de Historial Seleccionado (Con Estado de Pagos y Recibos Adjuntos) -->
+            <div x-show="detalleSeleccionado" class="bg-white p-5 md:p-6 rounded-2xl shadow-sm border border-slate-200 space-y-6">
+                <div class="flex justify-between items-center border-b pb-4">
+                    <h3 class="text-lg font-bold text-indigo-900" x-text="'Detalle del Periodo: ' + detalleSeleccionado?.periodo"></h3>
+                    <button @click="detalleSeleccionado = null" class="text-sm text-slate-500 hover:text-slate-800 font-bold px-3 py-1 bg-slate-100 rounded-lg">✕ Cerrar</button>
+                </div>
+
+                <!-- Tabla de Control de Pagos de Inquilinos -->
+                <div>
+                    <h4 class="font-bold text-slate-800 mb-3 text-sm">💰 Control de Pagos por Inquilino</h4>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse min-w-[600px]">
+                            <thead>
+                                <tr class="bg-slate-100 text-slate-700 text-xs uppercase">
+                                    <th class="p-3">Piso</th>
+                                    <th class="p-3">Total a Pagar</th>
+                                    <th class="p-3">Monto Abonado</th>
+                                    <th class="p-3">Estado de Pago</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-100 text-sm">
+                                <template x-for="pago in detalleSeleccionado?.pagos" :key="pago.nombre">
+                                    <tr>
+                                        <td class="p-3 font-semibold" x-text="pago.nombre"></td>
+                                        <td class="p-3 font-bold text-indigo-900" x-text="'S/. ' + pago.totalPagar.toFixed(2)"></td>
+                                        <td class="p-3">
+                                            <input type="number" step="0.01" x-model.number="pago.abonado" class="w-28 px-3 py-1 border rounded-lg text-sm font-semibold">
+                                        </td>
+                                        <td class="p-3">
+                                            <span class="px-2.5 py-1 rounded-full text-xs font-bold"
+                                                  :class="pago.abonado >= pago.totalPagar ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'"
+                                                  x-text="pago.abonado >= pago.totalPagar ? 'Pagado Completo' : 'Pendiente / Parcial'">
+                                            </span>
+                                        </td>
+                                    </tr>
+                                </template>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Recibos del Periodo Histórico -->
+                <div class="border-t pt-4">
+                    <h4 class="font-bold text-slate-800 mb-3 text-sm">📎 Recibos Adjuntos de este Periodo</h4>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="bg-slate-50 p-4 rounded-xl border flex justify-between items-center">
+                            <span class="text-sm font-medium text-amber-700">Recibo de Luz</span>
+                            <template x-if="detalleSeleccionado?.reciboLuz">
+                                <button @click="abrirModal(detalleSeleccionado.reciboLuz, detalleSeleccionado.reciboLuzTipo, 'Recibo de Luz - ' + detalleSeleccionado.periodo)" class="bg-amber-600 text-white text-xs px-3 py-1.5 rounded-lg font-medium">Ver Recibo</button>
+                            </template>
+                            <template x-if="!detalleSeleccionado?.reciboLuz">
+                                <span class="text-xs text-slate-400">No adjunto</span>
+                            </template>
+                        </div>
+                        <div class="bg-slate-50 p-4 rounded-xl border flex justify-between items-center">
+                            <span class="text-sm font-medium text-sky-700">Recibo de Agua</span>
+                            <template x-if="detalleSeleccionado?.reciboAgua">
+                                <button @click="abrirModal(detalleSeleccionado.reciboAgua, detalleSeleccionado.reciboAguaTipo, 'Recibo de Agua - ' + detalleSeleccionado.periodo)" class="bg-sky-600 text-white text-xs px-3 py-1.5 rounded-lg font-medium">Ver Recibo</button>
+                            </template>
+                            <template x-if="!detalleSeleccionado?.reciboAgua">
+                                <span class="text-xs text-slate-400">No adjunto</span>
+                            </template>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ================= PESTAÑA 3: VISOR DE RECIBOS ================= -->
+        <div x-show="tab === 'recibos'" class="space-y-6" style="display: none;">
+            <div class="bg-white p-5 md:p-6 rounded-2xl shadow-sm border border-slate-200">
+                <h2 class="text-lg font-bold text-slate-900 mb-4">🖼️ Visor de Recibos Actuales</h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <!-- Recibo Luz -->
+                    <div class="border-2 border-dashed border-slate-300 rounded-2xl p-4 md:p-6 text-center flex flex-col items-center">
+                        <h3 class="font-semibold text-amber-600 mb-2">Recibo de Luz</h3>
+                        <input type="file" accept="application/pdf,image/*" @change="cargarRecibo($event, 'luz')" class="text-xs md:text-sm text-slate-500 file:mr-2 file:py-2 file:px-3 file:rounded-xl file:border-0 file:font-semibold file:bg-amber-50 file:text-amber-700 mb-4 w-full">
+                        <template x-if="recibos.luz">
+                            <div class="w-full space-y-2">
+                                <div class="w-full h-48 md:h-64 border rounded-xl overflow-hidden bg-slate-100">
+                                    <template x-if="recibos.luzTipo.includes('pdf')"><iframe :src="recibos.luz" class="w-full h-full"></iframe></template>
+                                    <template x-if="!recibos.luzTipo.includes('pdf')"><img :src="recibos.luz" class="w-full h-full object-contain"></template>
+                                </div>
+                                <button @click="abrirModal(recibos.luz, recibos.luzTipo, 'Recibo de Luz')" class="w-full bg-amber-600 hover:bg-amber-700 text-white py-2 px-4 rounded-xl text-xs md:text-sm font-medium">🔍 Pantalla Completa</button>
+                            </div>
+                        </template>
+                    </div>
+
+                    <!-- Recibo Agua -->
+                    <div class="border-2 border-dashed border-slate-300 rounded-2xl p-4 md:p-6 text-center flex flex-col items-center">
+                        <h3 class="font-semibold text-sky-600 mb-2">Recibo de Agua</h3>
+                        <input type="file" accept="application/pdf,image/*" @change="cargarRecibo($event, 'agua')" class="text-xs md:text-sm text-slate-500 file:mr-2 file:py-2 file:px-3 file:rounded-xl file:border-0 file:font-semibold file:bg-sky-50 file:text-sky-700 mb-4 w-full">
+                        <template x-if="recibos.agua">
+                            <div class="w-full space-y-2">
+                                <div class="w-full h-48 md:h-64 border rounded-xl overflow-hidden bg-slate-100">
+                                    <template x-if="recibos.aguaTipo.includes('pdf')"><iframe :src="recibos.agua" class="w-full h-full"></iframe></template>
+                                    <template x-if="!recibos.aguaTipo.includes('pdf')"><img :src="recibos.agua" class="w-full h-full object-contain"></template>
+                                </div>
+                                <button @click="abrirModal(recibos.agua, recibos.aguaTipo, 'Recibo de Agua')" class="w-full bg-sky-600 hover:bg-sky-700 text-white py-2 px-4 rounded-xl text-xs md:text-sm font-medium">🔍 Pantalla Completa</button>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Modal de Pantalla Completa -->
+    <div x-show="modalOpen" class="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-2 md:p-4" style="display: none;">
+        <div class="bg-white w-full max-w-5xl h-[90vh] rounded-2xl flex flex-col overflow-hidden shadow-2xl">
+            <div class="bg-indigo-900 text-white px-4 md:px-6 py-3 md:py-4 flex justify-between items-center">
+                <h3 class="font-bold text-sm md:text-lg truncate mr-2" x-text="modalTitulo"></h3>
+                <button @click="modalOpen = false" class="text-white hover:text-slate-300 font-bold px-3 py-1 bg-indigo-800 rounded-lg text-sm">✕</button>
+            </div>
+            <div class="flex-1 bg-slate-100 p-2 md:p-4 overflow-hidden">
+                <template x-if="modalTipo.includes('pdf')"><iframe :src="modalSrc" class="w-full h-full rounded-xl border"></iframe></template>
+                <template x-if="!modalTipo.includes('pdf')"><img :src="modalSrc" class="w-full h-full object-contain"></template>
+            </div>
+        </div>
+    </div>
+
+    <!-- Script Principal -->
+    <script>
+        let chartPie = null;
+        let chartBar = null;
+
+        document.addEventListener('alpine:init', () => {
+            Alpine.data('utilityApp', () => ({
+                tab: 'calculo',
+                periodo: 'Noviembre 2026',
+                totalReciboLuz: 198.00,
+                totalReciboAgua: 150.00,
+                tarifaLuzManual: false,
+                tarifaLuzCustom: 0.85,
+                pisos: [
+                    { nombre: '1° Piso', luzAnterior: 732, luzActual: 777, personas: 2 },
+                    { nombre: '2° Piso', luzAnterior: 993, luzActual: 1053, personas: 4 },
+                    { nombre: '3° Piso', luzAnterior: 5212, luzActual: 5258, personas: 3 },
+                    { nombre: '4° Piso', luzAnterior: 7847, luzActual: 7972, personas: 7 }
+                ],
+                historial: [],
+                detalleSeleccionado: null,
+                recibos: { luz: null, luzTipo: '', agua: null, aguaTipo: '' },
+                modalOpen: false,
+                modalSrc: '',
+                modalTipo: '',
+                modalTitulo: '',
+
+                consumoLuz(piso) {
+                    let diff = piso.luzActual - piso.luzAnterior;
+                    return diff >= 0 ? diff : 0;
+                },
+
+                get totalKwhGeneral() {
+                    return this.pisos.reduce((acc, p) => acc + this.consumoLuz(p), 0);
+                },
+
+                get totalPersonasGeneral() {
+                    return this.pisos.reduce((acc, p) => acc + Number(p.personas), 0);
+                },
+
+                get tarifaLuzAutomatica() {
+                    return this.totalKwhGeneral > 0 ? this.totalReciboLuz / this.totalKwhGeneral : 0;
+                },
+
+                get tarifaLuzFinal() {
+                    return this.tarifaLuzManual ? this.tarifaLuzCustom : this.tarifaLuzAutomatica;
+                },
+
+                get tarifaAgua() {
+                    return this.totalPersonasGeneral > 0 ? this.totalReciboAgua / this.totalPersonasGeneral : 0;
+                },
+
+                get reporteCalculado() {
+                    return this.pisos.map(p => {
+                        let kwh = this.consumoLuz(p);
+                        let montoLuz = kwh * this.tarifaLuzFinal;
+                        let montoAgua = Number(p.personas) * this.tarifaAgua;
+                        return {
+                            nombre: p.nombre,
+                            kwh: kwh,
+                            montoLuz: montoLuz,
+                            personas: p.personas,
+                            montoAgua: montoAgua,
+                            totalPagar: montoLuz + montoAgua
+                        };
+                    });
+                },
+
+                get sumaTotalRecibos() {
+                    return this.totalReciboLuz + this.totalReciboAgua;
+                },
+
+                get sumaTotalPisos() {
+                    return this.reporteCalculado.reduce((acc, r) => acc + r.totalPagar, 0);
+                },
+
+                get estaCuadrado() {
+                    return Math.abs(this.sumaTotalRecibos - this.sumaTotalPisos) < 0.05;
+                },
+
+                get mensajeCuadre() {
+                    let diff = this.sumaTotalRecibos - this.sumaTotalPisos;
+                    if (this.estaCuadrado) {
+                        return 'La suma de los pagos por piso coincide perfectamente con el total de los recibos.';
+                    } else if (diff > 0) {
+                        return `Falta repartir S/. ${diff.toFixed(2)} para igualar exactamente el monto de los recibos.`;
+                    } else {
+                        return `Hay un excedente de S/. ${Math.abs(diff).toFixed(2)} en la suma de los pisos.`;
+                    }
+                },
+
+                guardarEnHistorial() {
+                    let pagosIniciales = this.reporteCalculado.map(r => ({
+                        nombre: r.nombre,
+                        totalPagar: r.totalPagar,
+                        abonado: 0
+                    }));
+
+                    this.historial.push({
+                        periodo: this.periodo,
+                        totalReciboLuz: this.totalReciboLuz,
+                        totalReciboAgua: this.totalReciboAgua,
+                        reporte: JSON.parse(JSON.stringify(this.reporteCalculado)),
+                        pagos: pagosIniciales,
+                        reciboLuz: this.recibos.luz,
+                        reciboLuzTipo: this.recibos.luzTipo,
+                        reciboAgua: this.recibos.agua,
+                        reciboAguaTipo: this.recibos.aguaTipo
+                    });
+                    alert('¡Periodo, pagos y recibos guardados en el historial con éxito!');
+                },
+
+                verDetalleHistorial(item) {
+                    this.detalleSeleccionado = item;
+                },
+
+                cargarRecibo(event, tipo) {
+                    const file = event.target.files[0];
+                    if (file) {
+                        this.recibos[tipo] = URL.createObjectURL(file);
+                        this.recibos[tipo + 'Tipo'] = file.type;
+                    }
+                },
+
+                abrirModal(src, tipo, titulo) {
+                    this.modalSrc = src;
+                    this.modalTipo = tipo;
+                    this.modalTitulo = titulo;
+                    this.modalOpen = true;
+                },
+
+                initCharts() {
+                    const ctxPie = document.getElementById('chartDistribucionPisos').getContext('2d');
+                    chartPie = new Chart(ctxPie, {
+                        type: 'doughnut',
+                        data: {
+                            labels: ['1° Piso', '2° Piso', '3° Piso', '4° Piso'],
+                            datasets: [{
+                                data: [61.82, 97.81, 0.00, 188.38],
+                                backgroundColor: ['#6366f1', '#38bdf8', '#a855f7', '#f59e0b'],
+                                borderWidth: 2
+                            }]
+                        },
+                        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
+                    });
+
+                    const ctxBar = document.getElementById('chartHistorico').getContext('2d');
+                    chartBar = new Chart(ctxBar, {
+                        type: 'bar',
+                        data: {
+                            labels: ['Agosto', 'Septiembre', 'Octubre', 'Noviembre'],
+                            datasets: [
+                                { label: 'Luz (S/.)', data: [180, 190, 198, 198], backgroundColor: '#f59e0b', borderRadius: 6 },
+                                { label: 'Agua (S/.)', data: [130, 140, 145, 150], backgroundColor: '#38bdf8', borderRadius: 6 }
+                            ]
+                        },
+                        options: { responsive: true, maintainAspectRatio: false, scales: { x: { grid: { display: false } }, y: { beginAtZero: true } }, plugins: { legend: { position: 'bottom' } } }
+                    });
+                },
+
+                updateCharts() {
+                    if (chartPie) {
+                        chartPie.data.datasets[0].data = this.reporteCalculado.map(r => r.totalPagar);
+                        chartPie.update();
+                    }
+                }
+            }));
+        });
+    </script>
+</body>
+</html>
